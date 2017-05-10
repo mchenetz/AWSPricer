@@ -6,6 +6,7 @@ import os
 class awspricer:
 
     def __init__(self, region):
+        print('AWSPricer API Michael Chenetz 2017')
         self.regionMap = {
             'us-east-1': 'US East (N. Virginia)',
             'us-east-2': 'US East (Ohio)',
@@ -72,37 +73,22 @@ class awspricer:
             return ec2pricing
 
 
-    def price(self, size):
-        ec2products = self.ec2products
+    def price(self, filterset=[]):
+        pricing = []
+        if filterset != []:
+            products = {item['sku']:item for item in filterset}
+        else:
+            products = self.ec2products
         ec2pricing = self.ec2pricing
-        vcpu = ''
-        mem = ''
-        instanceType = ''
-        for id in ec2products:
-            if len(id) == 16:
-                family = ec2products[id]['productFamily']
-                if 'vcpu' in ec2products[id]['attributes'].keys():
-                    vcpu = ec2products[id]['attributes']['vcpu']
-                if 'memory'in ec2products[id]['attributes'].keys():
-                    mem = ec2products[id]['attributes']['memory']
-                if 'instanceType' in ec2products[id]['attributes'].keys():
-                    instanceType = ec2products[id]['attributes']['instanceType']
-                if family == 'Compute Instance':
-                    print (id + ': ' + family)
-                    print ('VCPU: ' + vcpu)
-                    print ('Memory: ' + mem)
-                    print ('Instance Type: ' + instanceType)
-            onDemand = ec2pricing['OnDemand'][id]
-            for priceId in onDemand:
-                if 'offeringClass' not in onDemand[priceId]['termAttributes'].keys():
-                    priceDimensions = onDemand[priceId]['priceDimensions']
-                    for costId in priceDimensions:
-                        print('units: ' + str(priceDimensions[costId]['unit']))
-                        if priceDimensions[costId]['unit']=='Hrs':
-                            print('Cost Per/Hr: ' + str(priceDimensions[costId]['pricePerUnit']['USD']))
+        for sku in products:
+            for type in ec2pricing:
+                for id in ec2pricing[type]:
+                    if id == sku:
+                        for offer in ec2pricing[type][id]:
+                            pricing.append(ec2pricing[type][id][offer])
+        return pricing
 
 if __name__ == '__main__':
-    print('Main')
     pricer = awspricer('us-east-1')
     # linux = pricer.getproductsbyos('Linux')
     # pricing = pricer.ec2pricing
@@ -119,9 +105,8 @@ if __name__ == '__main__':
     #         pd = instPrice[price]['priceDimensions']
     #         for pricedim in pd:
     #             print ('Price/hr         : ' + str(pd[pricedim]['pricePerUnit']['USD']))
-    for price in pricer.getproductsbyos('Linux',pricer.getproductsbyregion('us-east-1')):
-        print(price['attributes']['operatingSystem'])
-        print(price['attributes']['location'])
+    for price in pricer.price(pricer.getproductsbyos('Linux',pricer.getproductsbyregion('us-east-1'))):
+        print (price)
 
     #print(pricer.getlatestpricing())
     #print(pricer.price('hello'))

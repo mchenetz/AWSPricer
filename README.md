@@ -21,5 +21,12 @@ The above will get products by OS and then region
 
 You can then return the filter sets to pricing and get back prices.
 
+**Run through Pricer:**
+
+```   
+for price in pricer.price(pricer.getproductsbyos('Linux',pricer.getproductsbyregion('us-east-1'))):
+    print (price)
+```
+
 
 
