@@ -1,4 +1,4 @@
-#AWSPricer - A Pricing API for AWS
+# AWSPricer - A Pricing API for AWS
 #### Currently Supports EC2
 
 ---
