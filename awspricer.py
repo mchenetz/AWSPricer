@@ -117,25 +117,6 @@ class awspricer:
 
 if __name__ == '__main__':
     pricer = awspricer('us-east-1')
-    # linux = pricer.getproductsbyos('Linux')
-    # pricing = pricer.ec2pricing
-    # for sku in linux:
-    #     print (sku['sku'] + ':')
-    #     att = sku['attributes']
-    #     print ('Operating System : ' + att['operatingSystem'])
-    #     print ('License Model    : ' + att['licenseModel'])
-    #     print ('Virtual CPUs     : ' + str(att['vcpu']))
-    #     print ('Instance Model   : ' + att['instanceType'])
-    #     print ('Memory           : ' + str(att['memory']))
-    #     instPrice = pricing['OnDemand'][sku['sku']]
-    #     for price in instPrice:
-    #         pd = instPrice[price]['priceDimensions']
-    #         for pricedim in pd:
-    #             print ('Price/hr         : ' + str(pd[pricedim]['pricePerUnit']['USD']))
+
     products = pricer.filterproducts(vcpu='4', memory='16 GiB').filterprice(PurchaseOption='No Upfront').getprice()
     print (products)
-    # for counter, product in enumerate(products):
-    #     print(product)
-    # print('Total:', counter)
-    #print(pricer.getlatestpricing())
-    #print(pricer.price('hello'))
