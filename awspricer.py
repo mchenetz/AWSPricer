@@ -3,16 +3,22 @@ import sys
 import json
 import os
 
+
 class awspricer:
 
     def __init__(self, region):
         print('AWSPricer API Michael Chenetz 2017')
+        self.allProducts = []
+        self.allPricing = []
+        self.allProductIds = []
+        self.allPricingIds = []
         self.regionMap = {
             'us-east-1': 'US East (N. Virginia)',
             'us-east-2': 'US East (Ohio)',
             'us-west-1': 'US West (N. California)',
             'us-west-2': 'US West (Oregon)'
         }
+        self.productKeyMap = ['instanceType','vcpu','memory','operatingSystem']
         self.dir_path = os.path.dirname(os.path.realpath(__file__))
         self.ec2pricingpath = os.path.join(self.dir_path, 'ec2pricing')
         if region in self.regionMap.keys():
@@ -27,7 +33,8 @@ class awspricer:
 
     def getlatestpricing(self):
         print(self.dir_path)
-        response = requests.get('https://pricing.{region}.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json'.format(region=self.region))
+        response = requests.get('https://pricing.{region}.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json'
+                                .format(region=self.region))
         with open(os.path.join(self.ec2pricingpath, 'index.json'),'w+') as out:
             json.dump(response.json(), out)
             out.flush()
@@ -35,34 +42,6 @@ class awspricer:
         response.close()
         return 0
 
-    def getproductsbyos(self,os,filterset=[]):
-        allProducts = []
-        if filterset != []:
-            products = {item['sku']:item for item in filterset}
-        else:
-            products = self.ec2products
-        for id in products:
-            att = products[id]['attributes']
-            family = products[id]['productFamily']
-            if family=='Compute Instance':
-                if att['operatingSystem']==os:
-                    allProducts.append(products[id])
-        return allProducts
-
-    def getproductsbyregion(self, region, filterset=[]):
-        allProducts = []
-        if filterset != []:
-            for list in filterset:
-                products = {item['sku']:item for item in filterset}
-        else:
-            products = self.ec2products
-        for id in products:
-            att = products[id]['attributes']
-            family = products[id]['productFamily']
-            if family == 'Compute Instance':
-                if att['location']==self.regionMap[region]:
-                    allProducts.append(products[id])
-        return allProducts
 
 
     def loadpricing(self):
@@ -73,20 +52,68 @@ class awspricer:
             return ec2pricing
 
 
-    def price(self, filterset=[]):
-        pricing = []
-        if filterset != []:
-            products = {item['sku']:item for item in filterset}
-        else:
-            products = self.ec2products
-        ec2pricing = self.ec2pricing
-        for sku in products:
-            for type in ec2pricing:
-                for id in ec2pricing[type]:
-                    if id == sku:
-                        for offer in ec2pricing[type][id]:
-                            pricing.append(ec2pricing[type][id][offer])
-        return pricing
+    def filterproducts(self, **kwargs):
+        products = self.ec2products
+        for key, value in kwargs.items():
+            ## Remove already filtered items from Products
+            if self.allProductIds:
+                for id in products.copy():
+                    if id not in self.allProductIds:
+                        del products[id]
+                self.allProductIds=[]
+            for id in products:
+                    for attributes in products[id]['attributes']:
+                            # vcpu, memory
+                            if key == attributes:
+                                if str(value) == str(products[id]['attributes'][key]):
+                                    self.allProductIds.append(id)
+        return self
+
+    def filterprice(self, **kwargs):
+        productIds = self.allProductIds
+        pricing = self.ec2pricing
+        for key, value in kwargs.items():
+            for type in pricing:
+                for id in pricing[type]:
+                    for offer in pricing[type][id]:
+                        for attributes in pricing[type][id][offer]['termAttributes']:
+                            if key == attributes:
+                                if str(value) == pricing[type][id][offer]['termAttributes'][attributes]:
+                                    if productIds:
+                                        if id in productIds:
+                                            self.allPricingIds.append(offer)
+                                    else:
+                                        self.allPricingIds.append(offer)
+        return self
+
+    def getproducts(self):
+        products = self.ec2products
+        filteredids = self.allProductIds
+        for id in products:
+            if filteredids:
+                if id in filteredids:
+                    self.allProducts.append(products[id])
+                else:
+                    self.allProducts.append(products[id])
+        return self.allProducts
+
+    def getprice(self):
+        pricing = self.ec2pricing
+        filteredids = self.allProductIds
+        filteredpricing = self.allPricingIds
+        for type in pricing:
+            for id in pricing[type]:
+                for offer in pricing[type][id]:
+                    if filteredpricing:
+                        if offer in filteredpricing:
+                            self.allPricing.append(pricing[type][id][offer])
+                    elif filteredids and not filteredpricing:
+                        if id in filteredids:
+                            self.allPricing.append(pricing[type][id][offer])
+                    else:
+                        self.allPricing.append(pricing[type][id][offer])
+        return self.allPricing
+
 
 if __name__ == '__main__':
     pricer = awspricer('us-east-1')
@@ -105,8 +132,10 @@ if __name__ == '__main__':
     #         pd = instPrice[price]['priceDimensions']
     #         for pricedim in pd:
     #             print ('Price/hr         : ' + str(pd[pricedim]['pricePerUnit']['USD']))
-    for price in pricer.price(pricer.getproductsbyos('Linux',pricer.getproductsbyregion('us-east-1'))):
-        print (price)
-
+    products = pricer.filterproducts(vcpu='4', memory='16 GiB').filterprice(PurchaseOption='No Upfront').getprice()
+    print (products)
+    # for counter, product in enumerate(products):
+    #     print(product)
+    # print('Total:', counter)
     #print(pricer.getlatestpricing())
     #print(pricer.price('hello'))
